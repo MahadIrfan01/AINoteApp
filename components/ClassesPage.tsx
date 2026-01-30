@@ -38,9 +38,12 @@ export default function ClassesPage() {
 
   const handleAddClass = async (name: string) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('User not authenticated')
+
       const { data, error } = await supabase
         .from('classes')
-        .insert([{ name }])
+        .insert([{ name, user_id: user.id }])
         .select()
         .single()
 

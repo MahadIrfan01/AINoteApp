@@ -7,12 +7,15 @@ import HomePage from '@/components/HomePage'
 import ClassesPage from '@/components/ClassesPage'
 import QuizHistoryPage from '@/components/QuizHistoryPage'
 import AnalyticsPage from '@/components/AnalyticsPage'
+import ProfilePage from '@/components/ProfilePage'
+import AuthPage from '@/components/AuthPage'
 import InvitePeopleModal from '@/components/InvitePeopleModal'
 import ReminderModal from '@/components/ReminderModal'
 
 export default function Home() {
   const [currentPage, setCurrentPage] = useState('home')
   const [loading, setLoading] = useState(true)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
   const [isReminderModalOpen, setIsReminderModalOpen] = useState(false)
   const [stats, setStats] = useState({
@@ -21,8 +24,42 @@ export default function Home() {
   })
 
   useEffect(() => {
-    fetchStats()
-  }, [currentPage])
+    checkAuth()
+  }, [])
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchStats()
+    }
+  }, [currentPage, isAuthenticated])
+
+  const checkAuth = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      setIsAuthenticated(!!session)
+      
+      // Listen for auth changes
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        setIsAuthenticated(!!session)
+      })
+
+      return () => subscription.unsubscribe()
+    } catch (error) {
+      console.error('Error checking auth:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleAuthSuccess = () => {
+    setIsAuthenticated(true)
+    setCurrentPage('home')
+  }
+
+  const handleLogout = () => {
+    setIsAuthenticated(false)
+    setCurrentPage('home')
+  }
 
   const fetchStats = async () => {
     try {
@@ -53,6 +90,10 @@ export default function Home() {
     )
   }
 
+  if (!isAuthenticated) {
+    return <AuthPage onAuthSuccess={handleAuthSuccess} />
+  }
+
   const renderPage = () => {
     switch (currentPage) {
       case 'home':
@@ -69,6 +110,8 @@ export default function Home() {
         return <QuizHistoryPage />
       case 'analytics':
         return <AnalyticsPage />
+      case 'profile':
+        return <ProfilePage onLogout={handleLogout} />
       default:
         return (
           <HomePage
@@ -92,6 +135,7 @@ export default function Home() {
               {currentPage === 'classes' && 'My Classes'}
               {currentPage === 'quiz-history' && 'Quiz History'}
               {currentPage === 'analytics' && 'Analytics'}
+              {currentPage === 'profile' && 'Profile'}
             </h2>
           </div>
           <div className="flex items-center gap-4">
