@@ -11,22 +11,8 @@ export default function ClassesPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Check auth status when component mounts
-    checkAuthStatus()
     fetchClasses()
   }, [])
-
-  const checkAuthStatus = async () => {
-    const { data: { session } } = await supabase.auth.getSession()
-    const { data: { user } } = await supabase.auth.getUser()
-    console.log('[ClassesPage] Auth Status:', {
-      hasSession: !!session,
-      hasUser: !!user,
-      userId: user?.id,
-      userEmail: user?.email,
-      emailConfirmed: user?.email_confirmed_at
-    })
-  }
 
   const fetchClasses = async () => {
     try {
@@ -52,48 +38,20 @@ export default function ClassesPage() {
 
   const handleAddClass = async (name: string) => {
     try {
-      console.log('=== ADD CLASS DEBUG START ===')
-      console.log('1. Getting user...')
-      const { data: { user }, error: authError } = await supabase.auth.getUser()
-      console.log('2. User result:', { 
-        hasUser: !!user, 
-        userId: user?.id,
-        userEmail: user?.email,
-        authError: authError 
-      })
-      
+      const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('User not authenticated')
 
-      console.log('3. Inserting class:', { name, user_id: user.id })
       const { data, error } = await supabase
         .from('classes')
         .insert([{ name, user_id: user.id }])
         .select()
         .single()
 
-      console.log('4. Insert result:', { 
-        success: !error,
-        hasData: !!data,
-        error: error ? {
-          message: error.message,
-          code: error.code,
-          details: error.details,
-          hint: error.hint
-        } : null
-      })
-
-      if (error) {
-        console.error('5. ERROR DETAILS:', JSON.stringify(error, null, 2))
-        throw error
-      }
-      
-      console.log('6. SUCCESS! Adding to list...')
+      if (error) throw error
       setClasses([data, ...classes])
       setIsAddClassOpen(false)
-      console.log('=== ADD CLASS DEBUG END (SUCCESS) ===')
     } catch (error) {
-      console.error('=== ADD CLASS DEBUG END (FAILED) ===')
-      console.error('FULL ERROR:', error)
+      console.error('Error adding class:', error)
       alert('Failed to add class. Please try again.')
     }
   }

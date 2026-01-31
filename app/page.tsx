@@ -37,12 +37,10 @@ export default function Home() {
   const checkAuth = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession()
-      console.log('[AUTH CHECK] Session:', { hasSession: !!session, userId: session?.user?.id, email: session?.user?.email })
       setIsAuthenticated(!!session)
       
       // Listen for auth changes
       const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-        console.log('[AUTH CHANGE]', { event: _event, hasSession: !!session, userId: session?.user?.id })
         setIsAuthenticated(!!session)
       })
 
