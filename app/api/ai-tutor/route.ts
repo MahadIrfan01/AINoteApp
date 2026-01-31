@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY
+import { GoogleGenerativeAI } from '@google/generative-ai'
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,9 +14,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log('[AI Tutor] API key check:', { hasApiKey: !!GEMINI_API_KEY })
+    const apiKey = process.env.GEMINI_API_KEY
+    console.log('[AI Tutor] API key check:', { hasApiKey: !!apiKey })
 
-    if (!GEMINI_API_KEY) {
+    if (!apiKey) {
       console.error('[AI Tutor] API key not configured')
       return NextResponse.json(
         { error: 'Gemini API key not configured' },
@@ -46,53 +46,28 @@ export async function POST(request: NextRequest) {
 
     console.log('[AI Tutor] Calling Gemini API...')
 
-    // Call Gemini API
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: conversationContext
-                }
-              ]
-            }
-          ],
-          generationConfig: {
-            temperature: 0.7,
-            topK: 40,
-            topP: 0.95,
-            maxOutputTokens: 1024,
-          },
-        }),
-      }
-    )
+    // Initialize Gemini AI
+    const genAI = new GoogleGenerativeAI(apiKey)
+    const model = genAI.getGenerativeModel({ 
+      model: 'gemini-2.5-flash',
+      generationConfig: {
+        temperature: 0.7,
+        topK: 40,
+        topP: 0.95,
+        maxOutputTokens: 1024,
+      },
+    })
 
-    console.log('[AI Tutor] Gemini API response:', { ok: response.ok, status: response.status })
+    // Generate response
+    const result = await model.generateContent(conversationContext)
+    const response = await result.response
+    const aiResponse = response.text()
 
-    if (!response.ok) {
-      const errorData = await response.json()
-      console.error('[AI Tutor] Gemini API error:', errorData)
-      throw new Error('Failed to get response from AI')
+    if (!aiResponse) {
+      throw new Error('No response from AI')
     }
 
-    const data = await response.json()
-    
-    console.log('[AI Tutor] Response parsed:', { hasCandidates: !!data.candidates })
-    
-    if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
-      throw new Error('Invalid response from AI')
-    }
-
-    const aiResponse = data.candidates[0].content.parts[0].text
-
-    console.log('[AI Tutor] Success! Response length:', aiResponse?.length)
+    console.log('[AI Tutor] Success! Response length:', aiResponse.length)
 
     return NextResponse.json({ response: aiResponse })
   } catch (error: any) {
