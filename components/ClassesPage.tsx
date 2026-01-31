@@ -16,20 +16,10 @@ export default function ClassesPage() {
 
   const fetchClasses = async () => {
     try {
-      console.log('[DEBUG] Fetching classes...')
       const { data, error } = await supabase
         .from('classes')
         .select('*')
         .order('created_at', { ascending: false })
-
-      console.log('[DEBUG] Fetch result:', {
-        hasData: !!data,
-        dataCount: data?.length,
-        hasError: !!error,
-        errorCode: error?.code,
-        errorMessage: error?.message,
-        fullError: error
-      })
 
       if (error) {
         console.error('Supabase error:', error)
@@ -48,27 +38,8 @@ export default function ClassesPage() {
 
   const handleAddClass = async (name: string) => {
     try {
-      console.log('[DEBUG] Step 1: Getting user...')
-      const { data: { user }, error: authError } = await supabase.auth.getUser()
-      console.log('[DEBUG] Step 2: User result:', { 
-        hasUser: !!user, 
-        userId: user?.id,
-        userEmail: user?.email,
-        emailConfirmed: user?.email_confirmed_at,
-        hasAuthError: !!authError,
-        authError: authError 
-      })
-      
-      if (!user) {
-        console.error('[DEBUG] ERROR: No user found! You might not be logged in.')
-        throw new Error('User not authenticated - please log in again')
-      }
-      
-      if (!user.email_confirmed_at) {
-        console.warn('[DEBUG] WARNING: Email not confirmed. This might cause RLS issues.')
-      }
-
-      console.log('[DEBUG] Step 3: Attempting insert with:', { name, user_id: user.id })
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('User not authenticated')
 
       const { data, error } = await supabase
         .from('classes')
@@ -76,29 +47,10 @@ export default function ClassesPage() {
         .select()
         .single()
 
-      console.log('[DEBUG] Step 4: Insert result:', { 
-        hasData: !!data, 
-        data: data,
-        hasError: !!error, 
-        errorCode: error?.code,
-        errorMessage: error?.message,
-        errorDetails: error?.details,
-        errorHint: error?.hint,
-        fullError: JSON.stringify(error, null, 2)
-      })
-
       if (error) throw error
       setClasses([data, ...classes])
       setIsAddClassOpen(false)
-      console.log('[DEBUG] Step 5: Success! Class added.')
     } catch (error) {
-      console.log('[DEBUG] Step 6: Error caught:', {
-        errorName: (error as any)?.name,
-        errorMessage: (error as any)?.message,
-        errorCode: (error as any)?.code,
-        errorDetails: (error as any)?.details,
-        fullError: JSON.stringify(error, null, 2)
-      })
       console.error('Error adding class:', error)
       alert('Failed to add class. Please try again.')
     }
